@@ -4,12 +4,28 @@
 RESTful API endpoints for telecom cart operations with comprehensive error handling, validation, and telecom-specific business logic. All endpoints return JSON and follow consistent error response patterns.
 
 ## Base Configuration
-- **Base URL**: `http://localhost:3000/api/v1`
+- **Base URL**: `http://localhost:3000/api`
 - **Content-Type**: `application/json`
 - **HTTP Methods**: GET, POST, PUT, DELETE
 - **Authentication**: None (demo purposes)
 
 ## Core Endpoints
+
+### 0. API Documentation
+**Get API endpoint documentation**
+
+```
+GET /
+```
+
+**Success Response (200):**
+```typescript
+{
+  message: string;
+  endpoints: Record<string, string>;
+  businessRules: string[];
+}
+```
 
 ### 1. Create Cart
 **Create a new cart for a customer**
@@ -21,9 +37,7 @@ POST /carts
 **Request Body:**
 ```typescript
 interface CreateCartRequest {
-  customerId: string;           // Customer identifier
-  customerType?: 'individual' | 'business';  // Default: 'individual'
-  region?: string;             // Geographic region for plan availability
+  customerId: string;           // Customer identifier (required)
 }
 ```
 
@@ -32,16 +46,10 @@ interface CreateCartRequest {
 interface CartResponse {
   cartId: string;
   customerId: string;
-  customerType: 'individual' | 'business';
-  region: string;
   items: CartItem[];
-  totals: CartTotals;
-  metadata: {
-    createdAt: string;        // ISO timestamp
-    updatedAt: string;        // ISO timestamp
-    expiresAt: string;        // ISO timestamp
-    status: 'active' | 'expired';
-  };
+  total: number;
+  createdAt: string;           // ISO timestamp
+  updatedAt: string;           // ISO timestamp
 }
 ```
 
@@ -55,7 +63,7 @@ interface CartResponse {
 **Retrieve cart details**
 
 ```
-GET /carts/{cartId}
+GET /cart/{cartId}
 ```
 
 **Path Parameters:**
@@ -76,18 +84,14 @@ GET /carts/{cartId}
 **Add a telecom product to the cart**
 
 ```
-POST /carts/{cartId}/items
+POST /cart/{cartId}/items
 ```
 
 **Request Body:**
 ```typescript
 interface AddItemRequest {
-  productId: string;          // Telecom product identifier
-  quantity: number;           // Must be > 0
-  planType: 'prepaid' | 'postpaid';
-  billingCycle?: 'monthly' | 'quarterly' | 'yearly';  // Default: 'monthly'
-  features?: string[];        // Optional add-on features
-  customAttributes?: Record<string, any>;  // Product-specific data
+  productId: string;          // Telecom product identifier (required)
+  quantity?: number;          // Must be > 0, defaults to 1
 }
 ```
 
@@ -109,7 +113,7 @@ interface AddItemRequest {
 **Modify quantity of existing cart item**
 
 ```
-PUT /carts/{cartId}/items/{itemId}/quantity
+PUT /cart/{cartId}/items/{itemId}
 ```
 
 **Request Body:**
@@ -136,11 +140,13 @@ interface UpdateQuantityRequest {
 **Remove item from cart**
 
 ```
-DELETE /carts/{cartId}/items/{itemId}
+DELETE /cart/{cartId}/items/{itemId}
 ```
 
-**Success Response (204):**
-- No content
+**Success Response (200):**
+```typescript
+// Returns updated CartResponse
+```
 
 **Error Responses:**
 - `404` - Cart or item not found
@@ -152,7 +158,7 @@ DELETE /carts/{cartId}/items/{itemId}
 **Remove all items from cart**
 
 ```
-DELETE /carts/{cartId}/items
+DELETE /cart/{cartId}
 ```
 
 **Success Response (200):**
@@ -173,22 +179,10 @@ DELETE /carts/{cartId}/items
 GET /products
 ```
 
-**Query Parameters:**
-- `region?: string` - Filter by region
-- `planType?: 'prepaid' | 'postpaid'` - Filter by plan type
-- `category?: string` - Product category filter
-
 **Success Response (200):**
 ```typescript
-interface ProductsResponse {
-  products: TelecomProduct[];
-  totalCount: number;
-  filters: {
-    regions: string[];
-    planTypes: string[];
-    categories: string[];
-  };
-}
+// Returns array of TelecomProduct objects
+TelecomProduct[]
 ```
 
 ---
@@ -202,26 +196,9 @@ interface CartItem {
   productId: string;
   productName: string;
   quantity: number;
-  planType: 'prepaid' | 'postpaid';
-  billingCycle: 'monthly' | 'quarterly' | 'yearly';
   unitPrice: number;
   totalPrice: number;
-  features: string[];
-  customAttributes: Record<string, any>;
   addedAt: string;            // ISO timestamp
-}
-```
-
-### CartTotals
-```typescript
-interface CartTotals {
-  subtotal: number;
-  discounts: number;
-  taxes: number;
-  total: number;
-  monthlyRecurring: number;   // For subscription products
-  oneTimeCharges: number;     // For equipment/setup fees
-  currency: string;           // Default: 'USD'
 }
 ```
 
@@ -231,24 +208,8 @@ interface TelecomProduct {
   productId: string;
   name: string;
   description: string;
-  category: 'plan' | 'device' | 'addon' | 'service';
-  planType: 'prepaid' | 'postpaid';
-  pricing: {
-    monthly?: number;
-    quarterly?: number;
-    yearly?: number;
-    oneTime?: number;
-  };
-  features: string[];
-  compatibility: {
-    requiresPlan?: boolean;
-    excludesPlans?: string[];
-    maxQuantity?: number;
-  };
-  availability: {
-    regions: string[];
-    customerTypes: ('individual' | 'business')[];
-  };
+  price: number;
+  type: 'prepaid' | 'postpaid';
 }
 ```
 
@@ -257,27 +218,16 @@ interface TelecomProduct {
 ### Standard Error Schema
 ```typescript
 interface ApiError {
-  error: {
-    code: string;             // Machine-readable error code
-    message: string;          // Human-readable message
-    details?: Record<string, any>;  // Additional context
-    timestamp: string;        // ISO timestamp
-    requestId?: string;       // For tracking
-  };
+  error: string;              // Human-readable error message
+  code?: string;              // Optional error code for specific errors
 }
 ```
 
-### Error Codes
-- `CART_NOT_FOUND` - Cart ID does not exist or expired
-- `CART_EXPIRED` - Cart context has expired
-- `ITEM_NOT_FOUND` - Cart item does not exist
-- `INVALID_PRODUCT` - Product ID is invalid or unavailable
-- `INVALID_QUANTITY` - Quantity is not a positive integer
-- `PLAN_INCOMPATIBLE` - Product cannot be added due to plan conflicts
-- `QUANTITY_EXCEEDED` - Quantity exceeds product limits
-- `VALIDATION_ERROR` - Request data validation failed
-- `CONTEXT_ERROR` - Salesforce context issue
-- `INTERNAL_ERROR` - Unexpected system error
+### Error Messages
+- Cart creation: "Customer ID is required"
+- Cart operations: "Cart not found" 
+- Item operations: "Product not found", "Invalid quantity"
+- Business rules: "Cannot mix prepaid and postpaid products"
 
 ### HTTP Status Code Usage
 - `200` - Success with response body
@@ -294,63 +244,40 @@ interface ApiError {
 
 ### Create Cart Example
 ```http
-POST /api/v1/carts
+POST /api/carts
 Content-Type: application/json
 
 {
-  "customerId": "cust_12345",
-  "customerType": "individual",
-  "region": "US_WEST"
+  "customerId": "cust_12345"
 }
 ```
 
 ### Add Item Example
 ```http
-POST /api/v1/carts/cart_abc123/items
+POST /api/cart/cart_12345/items
 Content-Type: application/json
 
 {
-  "productId": "plan_unlimited_5g",
-  "quantity": 1,
-  "planType": "postpaid",
-  "billingCycle": "monthly",
-  "features": ["international_calling", "mobile_hotspot"]
+  "productId": "plan-basic",
+  "quantity": 1
 }
 ```
 
 ### Error Response Example
 ```json
 {
-  "error": {
-    "code": "PLAN_INCOMPATIBLE",
-    "message": "Prepaid plan cannot be added to cart with existing postpaid items",
-    "details": {
-      "conflictingItems": ["item_xyz789"],
-      "suggestedAction": "Remove existing postpaid items or choose a postpaid plan"
-    },
-    "timestamp": "2025-10-29T10:30:00Z",
-    "requestId": "req_456def"
-  }
+  "error": "Cannot mix prepaid and postpaid products"
 }
 ```
 
 ## Validation Rules
 
 ### Business Logic Validations
-1. **Plan Compatibility**: Cannot mix prepaid and postpaid in same cart
-2. **Quantity Limits**: Respect product-specific quantity constraints
-3. **Regional Availability**: Products must be available in customer region
-4. **Customer Type Restrictions**: Business-only products for business customers
-5. **Feature Dependencies**: Some features require specific base plans
+1. **Plan Compatibility**: Cannot mix prepaid and postpaid products in same cart
+2. **Product Existence**: Validate product IDs against available catalog
+3. **Quantity Validation**: Must be positive numbers
 
 ### Input Validations
-1. **Required Fields**: All required fields must be present and non-empty
+1. **Required Fields**: Customer ID is required for cart creation
 2. **Data Types**: Strict type validation for all fields
-3. **String Lengths**: Reasonable limits on text fields
-4. **Numeric Ranges**: Positive quantities, valid price ranges
-5. **Enum Values**: Validate against allowed enum values
-
-### Context Validations
-1. **Cart Expiry**: Verify cart hasn't expired before operations
-2. **Context Freshness**: Check Salesforce context validity
-3. **Concurrent Modifications**: Handle race conditions gracefully
+3. **Numeric Ranges**: Positive quantities only

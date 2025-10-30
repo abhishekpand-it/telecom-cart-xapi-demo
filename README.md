@@ -76,47 +76,46 @@ The API will be available at `http://localhost:3000`
 
 Once the server is running (`npm run dev`), you can test these endpoints:
 
-- **API Documentation:** `GET http://localhost:3000/api/v1`
-- **Health Check:** `GET http://localhost:3000/health` 
-- **Products:** `GET http://localhost:3000/api/v1/products`
-- **Create Cart:** `POST http://localhost:3000/api/v1/carts`
+- **API Documentation:** `GET http://localhost:3000/`
+- **Products:** `GET http://localhost:3000/api/products`
+- **Create Cart:** `POST http://localhost:3000/api/carts`
 
 **Example using PowerShell:**
 ```powershell
 # Create a cart
-$cartData = @{customerId="test123"; customerType="individual"} | ConvertTo-Json
-$cart = Invoke-RestMethod -Uri "http://localhost:3000/api/v1/carts" -Method Post -Body $cartData -ContentType "application/json"
+$cartData = @{customerId="test123"} | ConvertTo-Json
+$cart = Invoke-RestMethod -Uri "http://localhost:3000/api/carts" -Method Post -Body $cartData -ContentType "application/json"
 
 # Add an item
-$itemData = @{productId="plan_unlimited_5g"; quantity=1; planType="postpaid"} | ConvertTo-Json
-Invoke-RestMethod -Uri "http://localhost:3000/api/v1/carts/$($cart.cartId)/items" -Method Post -Body $itemData -ContentType "application/json"
+$itemData = @{productId="plan-basic"; quantity=1} | ConvertTo-Json
+Invoke-RestMethod -Uri "http://localhost:3000/api/cart/$($cart.cartId)/items" -Method Post -Body $itemData -ContentType "application/json"
 ```
 
 **Example using curl:**
 ```bash
 # Create a cart
-curl -X POST http://localhost:3000/api/v1/carts \
+curl -X POST http://localhost:3000/api/carts \
   -H "Content-Type: application/json" \
-  -d '{"customerId":"test123","customerType":"individual"}'
+  -d '{"customerId":"test123"}'
 
 # Add an item  
-curl -X POST http://localhost:3000/api/v1/carts/{cartId}/items \
+curl -X POST http://localhost:3000/api/cart/{cartId}/items \
   -H "Content-Type: application/json" \
-  -d '{"productId":"plan_unlimited_5g","quantity":1,"planType":"postpaid"}'
+  -d '{"productId":"plan-basic","quantity":1}'
 ```
 
 ## API Documentation
 
 ### Base URL
 ```
-http://localhost:3000/api/v1
+http://localhost:3000/api
 ```
 
 ### Endpoints
 
-#### Health Check
+#### API Documentation
 ```
-GET /health
+GET /
 ```
 
 #### Cart Operations
@@ -127,34 +126,29 @@ POST /carts
 Content-Type: application/json
 
 {
-  "customerId": "cust_12345",
-  "customerType": "individual",
-  "region": "US_WEST"
+  "customerId": "cust_12345"
 }
 ```
 
 **Get Cart:**
 ```http
-GET /carts/{cartId}
+GET /cart/{cartId}
 ```
 
 **Add Item:**
 ```http
-POST /carts/{cartId}/items
+POST /cart/{cartId}/items
 Content-Type: application/json
 
 {
-  "productId": "plan_unlimited_5g",
-  "quantity": 1,
-  "planType": "postpaid",
-  "billingCycle": "monthly",
-  "features": ["international_calling"]
+  "productId": "plan-basic",
+  "quantity": 1
 }
 ```
 
 **Update Quantity:**
 ```http
-PUT /carts/{cartId}/items/{itemId}/quantity
+PUT /cart/{cartId}/items/{itemId}
 Content-Type: application/json
 
 {
@@ -164,58 +158,41 @@ Content-Type: application/json
 
 **Remove Item:**
 ```http
-DELETE /carts/{cartId}/items/{itemId}
+DELETE /cart/{cartId}/items/{itemId}
 ```
 
 **Clear Cart:**
 ```http
-DELETE /carts/{cartId}/items
+DELETE /cart/{cartId}
 ```
 
 #### Product Catalog
 
 **Get Products:**
 ```http
-GET /products?planType=postpaid&region=US_WEST&category=plan
+GET /products
 ```
 
 ### Sample Response
 
 ```json
 {
-  "cartId": "cart_1635789456789_abc123xyz",
+  "cartId": "cart_12345",
   "customerId": "cust_12345",
-  "customerType": "individual",
-  "region": "US_WEST",
   "items": [
     {
-      "itemId": "item_1635789456790_def456uvw",
-      "productId": "plan_unlimited_5g",
-      "productName": "Unlimited 5G Plan",
+      "itemId": "item_1",
+      "productId": "plan-basic",
+      "productName": "Basic Plan",
       "quantity": 1,
-      "planType": "postpaid",
-      "billingCycle": "monthly",
-      "unitPrice": 80.00,
-      "totalPrice": 80.00,
-      "features": ["unlimited_data", "5g_access"],
+      "unitPrice": 30,
+      "totalPrice": 30,
       "addedAt": "2025-10-29T10:30:00.000Z"
     }
   ],
-  "totals": {
-    "subtotal": 80.00,
-    "discounts": 0.00,
-    "taxes": 6.40,
-    "total": 86.40,
-    "monthlyRecurring": 80.00,
-    "oneTimeCharges": 0.00,
-    "currency": "USD"
-  },
-  "metadata": {
-    "createdAt": "2025-10-29T10:25:00.000Z",
-    "updatedAt": "2025-10-29T10:30:00.000Z",
-    "expiresAt": "2025-10-29T11:25:00.000Z",
-    "status": "active"
-  }
+  "total": 30,
+  "createdAt": "2025-10-29T10:25:00.000Z",
+  "updatedAt": "2025-10-29T10:30:00.000Z"
 }
 ```
 
